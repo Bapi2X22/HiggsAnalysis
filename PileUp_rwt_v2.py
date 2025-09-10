@@ -1,0 +1,173 @@
+import numpy as np
+import awkward as ak
+import uproot
+import ROOT
+import os
+
+ROOT.gROOT.SetBatch(False)  # Make sure canvases render before writing
+ROOT.TH1.SetDefaultSumw2(True)
+
+# --- Config ---
+parquet_file = "AllDatasets.parquet"
+data_pu_files = {
+    "2016": "/eos/user/b/bbapi/CMSSW_14_0_15/src/pileup_histos/pileup_2016_Golden.root",
+    "2017": "/eos/user/b/bbapi/CMSSW_14_0_15/src/pileup_histos/pileup_2017_Golden.root",
+    "2018": "/eos/user/b/bbapi/CMSSW_14_0_15/src/pileup_histos/pileup_2018_Golden.root",
+}
+output_root = "PUPlots_AllYears.root"
+
+out_dir_base = "/eos/user/b/bbapi/www/PileUp/Pileup_reweighting"
+
+# Load events once
+Events = ak.from_parquet(parquet_file)
+
+# Open ROOT output file
+fout = ROOT.TFile(output_root, "RECREATE")
+
+for year, data_pu_file in data_pu_files.items():
+    print(f"\n=== Processing {year} ===")
+
+    out_dir_year = os.path.join(out_dir_base, year)
+    os.makedirs(out_dir_year, exist_ok=True)
+
+    mask = np.char.find(ak.to_numpy(Events["dataset"]), f"UL{str(year)[2:]}") >= 0
+    Events_year = Events[mask]
+    mass_points = sorted(set(ak.to_numpy(Events_year["dataset"])))
+
+    with uproot.open(data_pu_file) as f:
+        data_vals, bin_edges = f["pileup"].to_numpy()
+    data_pdf = data_vals / np.sum(data_vals)
+
+    fout.mkdir(year)
+    fout.cd(year)
+
+    for mass in mass_points:
+        print(f"  → {mass}")
+
+        M_MC = Events_year[ak.to_numpy(Events_year["dataset"]) == mass]
+        mc_nTrueInt = ak.to_numpy(ak.flatten(M_MC["pu_true"]))
+
+        mc_vals, _ = np.histogram(mc_nTrueInt, bins=bin_edges)
+        mc_pdf = mc_vals / np.sum(mc_vals)
+
+        eps = 1e-8
+        pu_weights_per_bin = np.where(mc_pdf > eps, data_pdf / mc_pdf, 0.0)
+
+        bin_idx = np.digitize(mc_nTrueInt, bin_edges) - 1
+        bin_idx = np.clip(bin_idx, 0, len(pu_weights_per_bin) - 1)
+        pu_weight = pu_weights_per_bin[bin_idx]
+        mc_vals_rw, _ = np.histogram(mc_nTrueInt, bins=bin_edges, weights=pu_weight)
+        mc_pdf_rw = mc_vals_rw / np.sum(mc_vals_rw)
+
+        ratio_rw = np.where(data_pdf > eps, mc_pdf_rw / data_pdf, 0)
+
+        # h_mc = ROOT.TH1F(f"h_mc_{mass}", "MC before reweighting;PU;Normalized events", len(bin_edges)-1, bin_edges)
+        # h_data = ROOT.TH1F(f"h_data_{mass}", "Data;PU;Normalized events", len(bin_edges)-1, bin_edges)
+        # h_mc_rw = ROOT.TH1F(f"h_mc_rw_{mass}", "MC after reweighting;PU;Normalized events", len(bin_edges)-1, bin_edges)
+        # h_weights = ROOT.TH1F(f"h_weights_{mass}", "PU weights;PU;Weight", len(bin_edges)-1, bin_edges)
+        # h_ratio = ROOT.TH1F(f"h_ratio_{mass}", "Ratio MC_rw/Data;PU;Ratio", len(bin_edges)-1, bin_edges)
+
+        h_mc = ROOT.TH1F(
+            f"h_mc_{mass}",
+            f"MC before reweighting - {mass};PU;Normalized events",
+            len(bin_edges)-1, bin_edges
+        )
+        h_data = ROOT.TH1F(
+            f"h_data_{mass}",
+            f"Data - {mass};PU;Normalized events",
+            len(bin_edges)-1, bin_edges
+        )
+        h_mc_rw = ROOT.TH1F(
+            f"h_mc_rw_{mass}",
+            f"MC after reweighting - {mass};PU;Normalized events",
+            len(bin_edges)-1, bin_edges
+        )
+        h_weights = ROOT.TH1F(
+            f"h_weights_{mass}",
+            f"PU weights - {mass};PU;Weight",
+            len(bin_edges)-1, bin_edges
+        )
+        h_ratio = ROOT.TH1F(
+            f"h_ratio_{mass}",
+            f"Ratio MC_rw/Data - {mass};PU;Ratio",
+            len(bin_edges)-1, bin_edges
+        )
+
+
+        for i in range(len(mc_pdf)):
+            h_mc.SetBinContent(i+1, mc_pdf[i])
+            h_data.SetBinContent(i+1, data_pdf[i])
+            h_mc_rw.SetBinContent(i+1, mc_pdf_rw[i])
+            h_weights.SetBinContent(i+1, pu_weights_per_bin[i])
+            h_ratio.SetBinContent(i+1, ratio_rw[i])
+
+        h_mc.SetLineColor(ROOT.kRed)
+        h_mc.SetLineWidth(2)
+        h_data.SetMarkerStyle(20)
+        h_data.SetMarkerColor(ROOT.kBlue)
+        h_data.SetLineColor(ROOT.kBlue)
+        h_mc_rw.SetLineColor(ROOT.kGreen+2)
+        h_mc_rw.SetLineWidth(2)
+        h_weights.SetLineColor(ROOT.kBlack)
+        h_ratio.SetLineColor(ROOT.kMagenta)
+
+        # Canvas 1: Data vs MC before reweighting
+        c1 = ROOT.TCanvas(f"c_before_{mass}", f"Before reweighting - {mass}", 800, 600)
+        h_mc.Draw("HIST")
+        h_data.Draw("EP SAME")
+        leg1 = ROOT.TLegend(0.7, 0.15, 0.88, 0.25)
+        leg1.SetTextSize(0.02)
+        # leg1.AddEntry(h_mc, "MC", "l")
+        leg1.AddEntry(h_mc, f"MC", "l")
+        leg1.AddEntry(h_data, "Data", "p")
+        leg1.Draw()
+        c1.Modified()
+        c1.Update()
+        c1.Write()
+
+        # Canvas 2: Data vs MC after reweighting
+        c2 = ROOT.TCanvas(f"c_after_{mass}", f"After reweighting - {mass}", 800, 600)
+        h_mc_rw.Draw("HIST")
+        h_data.Draw("EP SAME")
+        leg2 = ROOT.TLegend(0.7, 0.15, 0.88, 0.25)
+        leg2.SetTextSize(0.02)
+        leg2.AddEntry(h_mc_rw, f"MC reweighted", "l")
+        leg2.AddEntry(h_data, "Data", "p")
+        leg2.Draw()
+        c2.Modified()
+        c2.Update()
+        c2.Write()
+
+        # Write extra histograms to ROOT file
+        h_weights.Write()
+        h_ratio.Write()
+
+        # Save canvases as PDF and PNG
+        c1.SaveAs(f"{out_dir_year}/c_before_{mass}.pdf")
+        c1.SaveAs(f"{out_dir_year}/c_before_{mass}.png")
+
+        c2.SaveAs(f"{out_dir_year}/c_after_{mass}.pdf")
+        c2.SaveAs(f"{out_dir_year}/c_after_{mass}.png")
+
+        # Save h_weights and h_ratio as images
+        c_w = ROOT.TCanvas(f"c_weights_{mass}", f"PU weights - {mass}", 800, 600)
+        h_weights.Draw("HIST")
+        c_w.Modified()
+        c_w.Update()
+        c_w.SaveAs(f"{out_dir_year}/h_weights_{mass}.pdf")
+        c_w.SaveAs(f"{out_dir_year}/h_weights_{mass}.png")
+        c_w.Close()
+
+        c_r = ROOT.TCanvas(f"c_ratio_{mass}", f"Ratio MC_rw/Data - {mass}", 800, 600)
+        h_ratio.Draw("HIST")
+        c_r.Modified()
+        c_r.Update()
+        c_r.SaveAs(f"{out_dir_year}/h_ratio_{mass}.pdf")
+        c_r.SaveAs(f"{out_dir_year}/h_ratio_{mass}.png")
+        c_r.Close()
+
+fout.Close()
+print(f"\nSaved PU plots and histograms for 2016, 2017, and 2018 in {output_root}")
+
+
+

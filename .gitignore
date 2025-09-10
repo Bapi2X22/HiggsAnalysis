@@ -1,0 +1,22 @@
+# Ignore ROOT files
+*.root
+
+# Ignore Parquet files
+*.parquet
+
+# Ignore image files
+*.png
+
+# Ignore PDF files
+*.pdf
+
+# Ignore CSV files
+*.csv
+
+process/
+
+mgbasedir/
+
+InputCards/
+
+decay_chains.txt

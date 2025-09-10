@@ -1,0 +1,19 @@
+conda-forge/linux-64                                        Using cache
+conda-forge/noarch                                          Using cache
+
+Pinned packages:
+
+  - python=3.11
+
+
+Transaction
+
+  Prefix: /eos/home-b/bbapi/HiggsDNA/micromamba_dir/envs/higgs-dna
+
+  All requested packages already installed
+
+
+Transaction starting
+
+Transaction finished
+

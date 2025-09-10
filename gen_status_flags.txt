@@ -1,0 +1,81 @@
+Decimal: 8449
+Binary : 010000100000001
+Properties:
+  - isPrompt
+  - fromHardProcess
+  - isLastCopy
+
+Decimal: 12288
+Binary : 011000000000000
+Properties:
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12289
+Binary : 011000000000001
+Properties:
+  - isPrompt
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12308
+Binary : 011000000010100
+Properties:
+  - isTauDecayProduct
+  - isDirectTauDecayProduct
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12348
+Binary : 011000000111100
+Properties:
+  - isTauDecayProduct
+  - isPromptTauDecayProduct
+  - isDirectTauDecayProduct
+  - isDirectPromptTauDecayProduct
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12352
+Binary : 011000001000000
+Properties:
+  - isDirectHadronDecayProduct
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12356
+Binary : 011000001000100
+Properties:
+  - isTauDecayProduct
+  - isDirectHadronDecayProduct
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12364
+Binary : 011000001001100
+Properties:
+  - isTauDecayProduct
+  - isPromptTauDecayProduct
+  - isDirectHadronDecayProduct
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 12673
+Binary : 011000110000001
+Properties:
+  - isPrompt
+  - isHardProcess
+  - fromHardProcess
+  - isFirstCopy
+  - isLastCopy
+
+Decimal: 22913
+Binary : 101100110000001
+Properties:
+  - isPrompt
+  - isHardProcess
+  - fromHardProcess
+  - fromHardProcessBeforeFSR
+  - isFirstCopy
+  - isLastCopyBeforeFSR
+
