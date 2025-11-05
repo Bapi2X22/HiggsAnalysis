@@ -177,7 +177,8 @@ def dump_photon_chains(events, output_file="decay_chains.txt", require_status23=
             for pho in photons:
                 mom_idx = mom_evt[pho]
 
-                if mom_idx >= 0 and pdg_evt[mom_idx] == 35:
+                # if mom_idx >= 0 and pdg_evt[mom_idx] == 35:
+                if mom_idx >= 0:
                     if require_status23 and st_evt[pho] != 23:
                         continue  # skip photons that are not status 23
 
