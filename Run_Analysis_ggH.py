@@ -1,7 +1,7 @@
 from coffea.processor import Runner, FuturesExecutor
 from coffea.nanoevents import NanoAODSchema
 # from Custom_Processor import HiggsAnalysisProcessor
-from ggH_processor import HiggsAnalysisProcessor
+from ggH_BBGG_processor import HiggsAnalysisProcessor
 import awkward as ak
 import pyarrow.parquet as pq
 import pyarrow as pa
@@ -632,6 +632,8 @@ fileset_cnaf = {
     ],
 }
 
+parquet_dir = "parquet_files_ggH"
+
 def process_and_save(dataset_name, files):
     try:
         runner = Runner(
@@ -658,8 +660,8 @@ def process_and_save(dataset_name, files):
         num_events = len(next(iter(events.values())))
         events["dataset"] = ak.Array([dataset_name] * num_events)
 
-        os.makedirs("parquet_files_ggH", exist_ok=True)
-        out_file = os.path.join("parquet_files_ggH", f"{dataset_name}.parquet")
+        os.makedirs(parquet_dir, exist_ok=True)
+        out_file = os.path.join(parquet_dir, f"{dataset_name}.parquet")
         table = ak.to_arrow_table(events)
         pq.write_table(table, out_file, compression=None)
 
@@ -707,7 +709,7 @@ def run_all_datasets(fileset_sources, max_workers=10, max_retries=3):
 
         remaining = []
         for ds in failed_datasets:
-            out_path = os.path.join("parquet_files_ggH", f"{ds}.parquet")
+            out_path = os.path.join(parquet_dir, f"{ds}.parquet")
             if is_parquet_valid(out_path, delete_if_invalid=True):
                 print(f"Skipping {ds} (already processed)")
                 skipped.append(ds)
@@ -768,7 +770,6 @@ def load_with_label(file):
 successful, skipped, failed = run_all_datasets(fileset_sources, max_workers=10, max_retries=3)
 
 # Merge only valid parquet files
-parquet_dir = "parquet_files_ggH"
 files = [f for f in glob.glob(os.path.join(parquet_dir, "*.parquet")) if is_parquet_valid(f)]
 
 if files:
